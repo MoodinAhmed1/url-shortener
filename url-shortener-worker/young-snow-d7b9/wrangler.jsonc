@@ -6,7 +6,7 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "young-snow-d7b9",
 	"main": "src/index.ts",
-	"compatibility_date": "2025-11-07",
+	"compatibility_date": "2025-07-01",
 	"observability": {
 		"enabled": true
 	},
@@ -14,7 +14,16 @@
     {
       "binding": "URL_MAPPINGS",
       "id": "03e8d58cf44b4f2c8008ccde60b4beb3"  
+    },
+	 {
+      "binding": "USERS",
+      "id": "6875719e021b47389552c946d191952a"
+    },
+	{
+      "binding": "ANALYTICS",
+      "id": "bf8eace4da814c0f96f8c8288d5ef93d"
     }
+
   ]
 	/**
 	 * Smart Placementnpm install -D @cloudflare/workers-types

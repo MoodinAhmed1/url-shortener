@@ -18,6 +18,8 @@
 		"wrangler": "^4.24.3"
 	},
 	"dependencies": {
+		"@types/bcryptjs": "^2.4.6",
+		"bcryptjs": "^3.0.2",
 		"nanoid": "^5.1.5"
 	}
 }

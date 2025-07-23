@@ -31,7 +31,7 @@ export default function LinksPage() {
           setLoading(false)
           return
         }
-
+ 
         const userId = JSON.parse(userData).id
         console.log("Fetching links for user:", userId)
 

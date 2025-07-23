@@ -8,7 +8,7 @@ export default function Home() {
 
   return (
     <div className="bg-white">
-<header className="bg-white shadow-sm">
+      <header className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex justify-between items-center">
           <h1 className="text-lg font-semibold text-gray-900">URL Shortener</h1>
           <Link 

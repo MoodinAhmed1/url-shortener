@@ -19,7 +19,7 @@ export async function shortenUrl(url: string, customCode: string | null = null) 
       },
       body: JSON.stringify({ url, customCode, userId }),
     })
-
+ 
     if (!response.ok) {
       const error = await response.json()
       throw new Error(error.error || "Failed to shorten URL")

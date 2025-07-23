@@ -32,7 +32,7 @@ export default function UrlForm() {
       } else {
         setDebugInfo(`User ID: ${userId}`)
       }
-
+ 
       console.log("Creating short URL for user:", userId)
       console.log("URL to shorten:", url)
       console.log("Custom code:", customCode || "none")

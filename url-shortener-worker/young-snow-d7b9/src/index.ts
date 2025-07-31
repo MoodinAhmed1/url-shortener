@@ -106,6 +106,9 @@ export default {
       if (url.pathname === "/api/auth/reset-password" && request.method === "POST") {
         return await handleResetPassword(request, env)
       }
+      if (url.pathname === "/api/auth/verify" && request.method === "POST") {
+        return await handleVerifyEmail(request, env)
+      }
     }
 
     // API endpoint to create a new short URL
@@ -199,6 +202,14 @@ async function handleRegister(request: Request, env: Env): Promise<Response> {
     await env.USERS.put(userId, JSON.stringify(user))
     await env.USERS.put(`email:${email}`, userId)
     await env.USERS.put(`username:${username}`, userId)
+    await env.USERS.put(`verified:${userId}`, "false") // Initially not verified
+
+    // Send verification email
+    //create token
+    const token = crypto.randomUUID()
+    await env.USERS.put(`verify:${token}`, userId, { expirationTtl: 86400 }) // 24 hours
+    // Send verification email
+    await sendEmail(email, "verification link", `Click to verify your account: http://localhost:3000/verify-register?token=${token}`)
 
     // Return user data (excluding password)
     const { passwordHash: _, ...userWithoutPassword } = user
@@ -212,7 +223,23 @@ async function handleRegister(request: Request, env: Env): Promise<Response> {
   }
 }
 
-// Function to handle user login
+async function handleVerifyEmail(request: Request, env: Env): Promise<Response> {
+  const { token } = (await request.json()) as {
+    token: string
+  }
+  const userId = await env.USERS.get(`verify:${token}`)
+  if (!userId) {
+    throw new Error("Invalid or expired verification token")
+  }
+
+  await env.USERS.delete(`verify:${token}`) // Invalidate the token
+  await env.USERS.put(`verified:${userId}`, "true") // Mark user as verified
+  console.log(`Email verified for user: ${userId}`)
+  // Optionally, you can redirect the user to a success page
+  return jsonResponse({ message: "Email verified successfully" })
+}
+
+  // Function to handle user login
 async function handleLogin(request: Request, env: Env): Promise<Response> {
   try {
     const { email, password } = (await request.json()) as { email: string; password: string }
@@ -240,7 +267,11 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
     if (!isPasswordValid) {
       return jsonResponse({ error: "Invalid email or password" }, 401)
     }
-
+    const isVerified = await env.USERS.get(`verified:${userId}`)
+    if (isVerified !== "true") {
+      return jsonResponse({ error: "User not verified" }, 403)
+    }
+    
     // Return user data (excluding password)
     const { passwordHash: _, ...userWithoutPassword } = user
     return jsonResponse({
@@ -386,7 +417,7 @@ async function handleRequestPasswordReset(request: Request, env: Env): Promise<R
     const token = crypto.randomUUID();
     await env.USERS.put(`reset:${token}`, email, { expirationTtl: 900 }); // 15 mins
 
-    const link = `http://localhost:3000/reset-password?token=${token}`;
+    const link = `http://localhost:3000/email-redirect?token=${token}`;
 
     await sendEmail(email, "Reset your password", `Click to reset: ${link}`);
 
@@ -401,7 +432,7 @@ async function handleRequestPasswordReset(request: Request, env: Env): Promise<R
   }
 }
 
-export async function handleResetPassword(request: Request, env: Env): Promise<Response> {
+async function handleResetPassword(request: Request, env: Env): Promise<Response> {
   const { token, newPassword } = (await request.json()) as {
     token: string
     newPassword: string

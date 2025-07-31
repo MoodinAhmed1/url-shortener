@@ -191,6 +191,19 @@ export async function registerUser(username: string, email: string, password: st
   }
 }
 
+export async function verifyEmail(token : string) {
+  const res = await fetch(`${WORKER_URL}/api/auth/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token }),
+  })
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ error: "Failed to verify email" }))
+    throw new Error(error.error || "Failed to verify email")
+  }
+  return res.json()
+}
+
 export async function loginUser(email: string, password: string) {
   const response = await fetch(`${WORKER_URL}/api/auth/login`, {
     method: "POST",

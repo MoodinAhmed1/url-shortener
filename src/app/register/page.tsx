@@ -29,12 +29,13 @@ export default function RegisterPage() {
     try {
       const response = await registerUser(username, email, password);
       
-      // Store user data in localStorage
-      localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('userData', JSON.stringify(response.user));
-      
-      // Redirect to dashboard (which will show the URL form)
-      router.push('/dashboard');
+      //redirect to verify register page
+      if (response && response.user) {
+        router.push('/verify');
+      } else {
+        setError('Registration failed. Please try again.');
+      }
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {

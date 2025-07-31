@@ -1,29 +1,36 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { requestPasswordReset } from '@/lib/api'
+import { useRouter } from 'next/navigation'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
   const [success, setSuccess] = useState(false)
 
+  const router = useRouter();
+
   useEffect(() => {
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === 'reset-token') {
-        const token = event.newValue
-        if (token) {
-          window.location.href = `/reset-password?token=${token}`
-        }
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'reset-token') {
+        const token = e.newValue;
+        if (!token) return;
+
+        // Cleanup
+        localStorage.removeItem('reset-token');
+
+        // Notify the email-redirect tab
+        localStorage.setItem('token-used', 'yes');
+        localStorage.removeItem('token-used'); // fire event
+
+        // Redirect the current tab
+        router.push(`/reset-password?token=${token}`);
       }
-    }
-
-    window.addEventListener('storage', onStorage)
-
-    return () => {
-      window.removeEventListener('storage', onStorage)
-    }
-  }, [])
-
+    };
+    // Listen for storage events to handle cross-tab communication
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();

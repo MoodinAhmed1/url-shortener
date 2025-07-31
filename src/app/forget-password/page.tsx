@@ -1,12 +1,29 @@
 'use client'
-
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { requestPasswordReset } from '@/lib/api'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
   const [message, setMessage] = useState('')
   const [success, setSuccess] = useState(false)
+
+  useEffect(() => {
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === 'reset-token') {
+        const token = event.newValue
+        if (token) {
+          window.location.href = `/reset-password?token=${token}`
+        }
+      }
+    }
+
+    window.addEventListener('storage', onStorage)
+
+    return () => {
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [])
+
 
   const handleSubmit = async (e: any) => {
     e.preventDefault();

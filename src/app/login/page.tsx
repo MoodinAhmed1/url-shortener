@@ -10,6 +10,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
   const router = useRouter();
  
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,6 +32,11 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleForgetPassword = () => {
+    // Redirect to the password reset page
+    router.push('/forget-password');
   };
 
   return (
@@ -59,6 +65,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
+
             <div>
               <label htmlFor="password" className="sr-only">
                 Password
@@ -95,7 +102,7 @@ export default function LoginPage() {
             </div>
 
             <div className="text-sm">
-              <a href="#" className="font-medium text-blue-600 hover:text-blue-500">
+              <a onClick={handleForgetPassword} className="font-medium text-blue-600 hover:text-blue-500 cursor-pointer">
                 Forgot your password?
               </a>
             </div>

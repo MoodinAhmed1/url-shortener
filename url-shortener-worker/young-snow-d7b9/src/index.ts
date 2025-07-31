@@ -85,6 +85,27 @@ export default {
       if (url.pathname === "/api/auth/login" && request.method === "POST") {
         return await handleLogin(request, env)
       }
+
+      // User change username endpoint
+      if (url.pathname === "/api/auth/change-username" && request.method === "POST") {
+        return await handleChangeUsername(request, env)
+      }
+
+      if (url.pathname === "/api/auth/change-password" && request.method === "POST") {
+        return await handleChangePassword(request, env)
+      } 
+
+      if (url.pathname === "/api/auth/change-email" && request.method === "POST") {
+        return await handleChangeEmail(request, env)
+      }
+
+      if (url.pathname === "/api/auth/request-password-reset" && request.method === "POST") {
+        return await handleRequestPasswordReset(request, env)
+      }
+      
+      if (url.pathname === "/api/auth/reset-password" && request.method === "POST") {
+        return await handleResetPassword(request, env)
+      }
     }
 
     // API endpoint to create a new short URL
@@ -114,6 +135,7 @@ export default {
       const shortId = url.pathname.replace("/api/reset-analytics/", "")
       return await handleResetAnalytics(shortId, env)
     }
+
 
     // Redirect short URLs to their original destination
     const shortId = url.pathname.slice(1)
@@ -229,6 +251,188 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
     console.error("Error logging in:", error)
     return jsonResponse({ error: "Failed to log in" }, 500)
   }
+}
+
+async function handleChangeUsername(request: Request, env: Env): Promise<Response> {
+  try {
+    const { userId, newUsername } = (await request.json()) as { userId: string; newUsername: string }
+
+    if (!userId || !newUsername) {
+      return jsonResponse({ error: "User ID and new username are required" }, 400)
+    }
+
+    // Check if username already exists
+    const existingUser = await env.USERS.get(`username:${newUsername}`)
+    if (existingUser) {
+      return jsonResponse({ error: "Username already taken" }, 409)
+    }
+
+    // Get current user data
+    const userJson = await env.USERS.get(userId)
+    if (!userJson) {
+      return jsonResponse({ error: "User not found" }, 404)
+    }
+
+    const user = JSON.parse(userJson) as User
+
+    // Update username in user data
+    const oldUsername = user.username;
+    user.username = newUsername
+
+    // Store updated user data
+    await env.USERS.put(userId, JSON.stringify(user))
+    await env.USERS.put(`username:${newUsername}`, userId)
+    await env.USERS.delete(`username:${oldUsername}`)
+
+    return jsonResponse({
+      message: "Username changed successfully",
+      user: { ...user, passwordHash: undefined },
+    })
+  } catch (error) {
+    console.error("Error changing username:", error)
+    return jsonResponse({ error: "Failed to change username" }, 500)
+  }
+}
+
+async function handleChangePassword(request: Request, env: Env): Promise<Response> {
+  try {
+    const { userId, oldPassword, newPassword } = (await request.json()) as { userId: string; oldPassword: string; newPassword: string }
+    if (!userId || !oldPassword || !newPassword) {
+      return jsonResponse({ error: "User ID, old password, and new password are required" }, 400)
+    }
+    // Get user data
+    const userJson = await env.USERS.get(userId)
+    if (!userJson) {
+      return jsonResponse({ error: "User not found" }, 404)
+    }
+    const user = JSON.parse(userJson) as User
+    // Verify old password
+    const isOldPasswordValid = await bcrypt.compare(oldPassword, user.passwordHash)
+    if (!isOldPasswordValid) {
+      return jsonResponse({ error: "Invalid old password" }, 401)
+    }
+    // Hash new password
+    const salt = await bcrypt.genSalt(10)
+    const newPasswordHash = await bcrypt.hash(newPassword, salt)
+    // Update password in user data
+    user.passwordHash = newPasswordHash
+    // Store updated user data
+    await env.USERS.put(userId, JSON.stringify(user))
+    return jsonResponse({
+      message: "Password changed successfully",
+      user: { ...user, passwordHash: undefined }, // Exclude password hash from response
+    })
+  } catch (error) {
+    console.error("Error changing password:", error)
+    return jsonResponse({ error: "Failed to change password" }, 500)
+  }
+}
+
+async function handleChangeEmail(request: Request, env: Env): Promise<Response> {
+  try {
+    const { userId, newEmail } = (await request.json()) as { userId: string; newEmail: string }
+
+    if (!userId || !newEmail) {
+      return jsonResponse({ error: "User ID and new email are required" }, 400)
+    }
+
+    // Check if email already exists
+    const existingUser = await env.USERS.get(`email:${newEmail}`)
+    if (existingUser) {
+      return jsonResponse({ error: "Email already registered" }, 409)
+    }
+
+    // Get current user data
+    const userJson = await env.USERS.get(userId)
+    if (!userJson) {
+      return jsonResponse({ error: "User not found" }, 404)
+    }
+
+    const user = JSON.parse(userJson) as User
+
+    // Update email in user data
+    const oldEmail = user.email;
+    user.email = newEmail
+
+    // Store updated user data
+    await env.USERS.put(userId, JSON.stringify(user))
+    await env.USERS.put(`email:${newEmail}`, userId)
+    await env.USERS.delete(`email:${oldEmail}`)
+
+    return jsonResponse({
+      message: "Email changed successfully",
+      user: { ...user, passwordHash: undefined },
+    })
+  } catch (error) {
+    console.error("Error changing email:", error)
+    return jsonResponse({ error: "Failed to change email" }, 500)
+  }
+}
+
+async function handleRequestPasswordReset(request: Request, env: Env): Promise<Response> {
+  try {
+    const { email } = (await request.json()) as { email: string }
+
+    if (!email) {
+      return jsonResponse({ error: "Email is required" }, 400)
+    }
+
+    // Get user ID by email
+    const userId = await env.USERS.get(`email:${email}`)
+    if (!userId) {
+      return jsonResponse({ error: "Email not registered" }, 404)
+    }
+
+    const token = crypto.randomUUID();
+    await env.USERS.put(`reset:${token}`, email, { expirationTtl: 900 }); // 15 mins
+
+    const link = `http://localhost:3000/reset-password?token=${token}`;
+
+    await sendEmail(email, "Reset your password", `Click to reset: ${link}`);
+
+    return jsonResponse({
+      message: "Password reset link sent to your email",
+      userId,
+    })
+  }
+  catch (error) {
+    console.error("Error requesting password reset:", error)
+    return jsonResponse({ error: "Failed to request password reset" }, 500)
+  }
+}
+
+export async function handleResetPassword(request: Request, env: Env): Promise<Response> {
+  const { token, newPassword } = (await request.json()) as {
+    token: string
+    newPassword: string
+  }
+
+  const email = await env.USERS.get(`reset:${token}`)
+  if (!email) {
+    return jsonResponse({ error: 'Invalid or expired token' }, 400)
+  }
+
+  const userId = await env.USERS.get(`email:${email}`)
+
+  if (!userId) {
+    return jsonResponse({ error: 'User not found' }, 404)
+  }
+
+  const userData = await env.USERS.get(`${userId}`)
+  const user = JSON.parse(userData as string)
+
+  // ✅ Hash password with bcrypt
+  const salt = await bcrypt.genSalt(10)
+  const passwordHash = await bcrypt.hash(newPassword, salt)
+  user.passwordHash = passwordHash
+
+  // ✅ Update user data
+  await env.USERS.put(`${userId}`, JSON.stringify(user))
+
+  // ✅ Invalidate token
+  await env.USERS.delete(`reset:${token}`)
+
+  return jsonResponse({ message: 'Password reset successful.' })
 }
 
 // Function to handle creating new short URLs
@@ -615,3 +819,27 @@ function jsonResponse(data: Record<string, any>, status = 200): Response {
     },
   })
 }
+
+async function sendEmail(to: string, subject: string, text: string) {
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: "Bearer re_ZBFKt6MF_FfL1Ws9Z6RepUu6T28HoUYgp", // replace this
+    },
+    body: JSON.stringify({
+      from: "onboarding@resend.dev",
+      to,
+      subject,
+      text,
+    }),
+  });
+
+  if (!res.ok) {
+    const error = await res.text();
+    console.error("Failed to send email:", error);
+  } else {
+    console.log("Email sent successfully!");
+  }
+}
+

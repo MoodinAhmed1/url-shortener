@@ -210,3 +210,105 @@ export async function loginUser(email: string, password: string) {
 
   return response.json()
 }
+
+export async function changeUsername(newUsername: string) {
+  const userData = localStorage.getItem("userData")
+  if (!userData) {
+    throw new Error("User not logged in")
+  }
+
+  const { id: userId } = JSON.parse(userData)
+
+  const response = await fetch(`${WORKER_URL}/api/auth/change-username`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      userId,
+      newUsername
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: "Failed to change username" }))
+    throw new Error(error.error || "Failed to change username")
+  }
+
+  return response.json()
+}
+
+export async function changePassword(oldPassword: string, newPassword: string) {
+  const userData = localStorage.getItem("userData")
+  if (!userData) {
+    throw new Error("User not logged in")
+  }
+
+  const { id: userId } = JSON.parse(userData)
+
+  const response = await fetch(`${WORKER_URL}/api/auth/change-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      userId,
+      oldPassword,
+      newPassword
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: "Failed to change password" }))
+    throw new Error(error.error || "Failed to change password")
+  }
+
+  return response.json()
+}
+
+export async function changeEmail(newEmail: string) {
+  const userData = localStorage.getItem("userData")
+  if (!userData) {
+    throw new Error("User not logged in")
+  }
+
+  const { id: userId } = JSON.parse(userData)
+
+  const response = await fetch(`${WORKER_URL}/api/auth/change-email`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      userId,
+      newEmail
+    }),
+  })
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ error: "Failed to change email" }))
+    throw new Error(error.error || "Failed to change email")
+  }
+
+  return response.json()
+}
+
+export async function requestPasswordReset(email: string) {
+  const res = await fetch(`${WORKER_URL}/api/auth/request-password-reset`, {
+    method: "POST",
+    body: JSON.stringify({ email }),
+    headers: { "Content-Type": "application/json" },
+  });
+
+  return await res.json();
+}
+
+export async function resetPassword(token: string, newPassword: string) {
+  const res = await fetch(`${WORKER_URL}/api/auth/reset-password`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, newPassword }),
+  });
+
+  return await res.json();
+}
